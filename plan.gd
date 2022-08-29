@@ -103,14 +103,13 @@ func _print_task_methods(domain):
 		print("")
 		print("Task name:         Relevant task methods:")
 		print("---------------    ----------------------")
+		var string_array : Array = Array()
 		for task in domain._task_method_dict:
-			var string_array : Array = Array()
-			for f in domain._task_method_dict[task]:
-				string_array.append(f.get_method())
-			print(
-				"{task:<19}"
-				+ ", ".join(string_array)
-			)
+			string_array.append(task)
+		print(
+			"{task:<19}"
+			+ ", ".join(string_array)
+		)
 		print("")
 	else:
 		print("-- There are no task methods --")
@@ -232,7 +231,7 @@ func declare_task_methods(task_name, methods):
 		# we don't want to add any methods that are already in it
 		var method_arrays : Array = []
 		for m in methods:
-			if m not in old_methods:
+			if not old_methods.has(m):
 				method_arrays.push_back(m)
 		current_domain._task_method_dict[task_name].extend(method_arrays)
 	else:
@@ -264,15 +263,15 @@ func declare_unigoal_methods(state_var_name, methods):
 	if current_domain == null:
 		print("cannot declare methods until a domain has been created.")
 		return []
-	if state_var_name not in current_domain._unigoal_method_dict:
+	if not current_domain._unigoal_method_dict.has(state_var_name):
 		current_domain._unigoal_method_dict[state_var_name] = methods
 	else:
 		var old_methods = current_domain._unigoal_method_dict[state_var_name]
 		var method_array : Array = []
 		for m in methods:
-			if m not in old_methods:
+			if not old_methods.has(m):
 				method_array.push_back(m)
-		current_domain._unigoal_method_dict[state_var_name] = current_domain._unigoal_method_dict[state_var_name] + method_array
+		current_domain._unigoal_method_dict[state_var_name].extend(method_array)
 	return current_domain._unigoal_method_dict
 
 
@@ -335,13 +334,13 @@ func m_split_multigoal(state, multigoal):
 #	defined below, one might want to modify it to choose a good order, e.g.,
 #	by using domain-specific information or a heuristic function.
 #	"""
-	var goal_dict = domain_const._goals_not_achieved(state, multigoal)
-	var goal_list = []
+	var goal_dict : Dictionary = domain_const._goals_not_achieved(state, multigoal)
+	var goal_list : Array = []
 	for state_var_name in goal_dict:
 		for arg in goal_dict[state_var_name]:
 			var val = goal_dict[state_var_name][arg]
 			goal_list.append([state_var_name, arg, val])
-	if goal_list:
+	if not goal_list.is_empty():
 		# achieve goals, then check whether they're all simultaneously true
 		return goal_list + [multigoal]
 	return goal_list
@@ -394,7 +393,6 @@ func _apply_action_and_continue(state, task1, todo_list, plan, depth):
 
 
 func _refine_task_and_continue(state, task1, todo_list, plan, depth):
-# TODO
 ##	"""
 ##	If task1 is in the task-method dictionary, then iterate through the list
 ##	of relevant methods to find one that's applicable, apply it to get
@@ -415,16 +413,23 @@ func _refine_task_and_continue(state, task1, todo_list, plan, depth):
 			print("depth %s trying %s: " % [depth, method.get_method()])
 		var subtasks = typed_method.call(state, task1.slice(1))
 		# Can't just say "if subtasks:", because that's wrong if subtasks == []
-		if subtasks != null:
-			if verbose >= 3:
-				print("applicable")
-				print("depth %s subtasks: %s" % [depth, subtasks])
-			var result = seek_plan(state, subtasks + todo_list, plan, depth + 1)
-			if result.size() and result != null:
-				return result
-		else:
+		if subtasks == false:
 			if verbose >= 3:
 				print("not applicable")
+			continue
+		if subtasks == null:
+			if verbose >= 3:
+				print("not applicable")
+			continue
+		if verbose >= 3:
+			print("applicable")
+			print("depth %s subtasks: %s" % [depth, subtasks])
+		var result = seek_plan(state, subtasks + todo_list, plan, depth + 1)
+		if result == null:
+			continue
+		if result == false:
+			continue
+		return result
 	if verbose >= 3:
 		print("depth %s could not accomplish task %s" % [depth, task1])
 	return false
@@ -458,33 +463,37 @@ func _refine_unigoal_and_continue(state, goal1, todo_list, plan, depth):
 		var method_typed : Callable = method
 		if verbose >= 3:
 			print("depth %s trying method %s: " % [depth, method.get_method()])
-		var subgoals = method_typed.call(state, arg, val)
-		# Can't just say "if subgoals:", because that's wrong if subgoals == []
-		if subgoals != false and subgoals != null:
-			var verification = []
-			if verbose >= 3:
-				print("applicable")
-				print("depth %s subgoals: %s" % [depth, subgoals])
-			if verify_goals:
-				verification = [
-					["_verify_g", method.get_method(), state_var_name, arg, val, depth]
-				]
-			else:
-				verification = []
-			todo_list = subgoals + verification + todo_list
-			var result = seek_plan(state, todo_list, plan, depth + 1)
-			if result != false and result != null:
-				return result
-		else:
+		var subgoals = method_typed.call(state, arg, vals)
+		if subgoals is bool and subgoals == false:
 			if verbose >= 3:
 				print("not applicable")
+			continue
+		if subgoals == null:
+			if verbose >= 3:
+				print("not applicable")
+			continue
+		var verification = []
+		if verbose >= 3:
+			print("applicable")
+			print("depth %s subgoals: %s" % [depth, subgoals])
+		if verify_goals:
+			verification = [
+				["_verify_g", method.get_method(), state_var_name, arg, val, depth]
+			]
+		else:
+			verification = []
+		todo_list = subgoals + verification + todo_list
+		var result = seek_plan(state, todo_list, plan, depth + 1)
+		if result is bool and result == false:
+			continue
+		if result == null:
+			continue
+		return result
 	if verbose >= 3:
 		print("depth %s could not achieve goal %s" % [depth, goal1])
 	return false
 
 func _refine_multigoal_and_continue(state, goal1, todo_list, plan, depth):
-	return false
-# TODO
 ##	"""
 ##	If goal1 is a multigoal, then iterate through the list of multigoal
 ##	methods to find one that's applicable, apply it to get additional
@@ -508,22 +517,29 @@ func _refine_multigoal_and_continue(state, goal1, todo_list, plan, depth):
 			print("depth %s trying method %s: " % [depth, method.get_method()])
 		var subgoals = method_typed.call(state, goal1)
 		# Can't just say "if subgoals:", because that's wrong if subgoals == []
-		if subgoals != false and subgoals != null:
-			var verification = []
-			if verbose >= 3:
-				print("applicable")
-				print("depth %s subgoals: %s" % [depth, subgoals])
-			if verify_goals:
-				verification = [["_verify_mg", method.name, goal1, depth]]
-			else:
-				verification = []
-			todo_list = subgoals + verification + todo_list
-			var result = seek_plan(state, todo_list, plan, depth + 1)
-			if result != false and result != null:
-				return result
-		else:
+		if subgoals is bool and subgoals == false:
 			if verbose >= 3:
 				print("not applicable")
+			continue
+		if subgoals == null:
+			if verbose >= 3:
+				print("not applicable")
+			continue
+		var verification = []
+		if verbose >= 3:
+			print("applicable")
+			print("depth %s subgoals: %s" % [depth, subgoals])
+		if verify_goals:
+			verification = [["_verify_mg", method.get_method(), goal1, depth]]
+		else:
+			verification = []
+		todo_list = subgoals + verification + todo_list
+		var result = seek_plan(state, todo_list, plan, depth + 1)
+		if result == null:
+			continue		
+		if result is bool and result == false:
+			continue
+		return result
 	if verbose >= 3:
 		print("depth %s could not achieve multigoal %s" % [depth, goal1])
 	return false
@@ -620,17 +636,17 @@ func run_lazy_lookahead(state, todo_list, max_tries=10):
 #	"""
 
 	if verbose >= 1:
-		print("RLL> run_lazy_lookahead, verbose = {verbose}, max_tries = {max_tries}")
-		print("RLL> initial state: {state.__name__}")
+		print("RLL> run_lazy_lookahead, verbose = %s, max_tries = %s" % [verbose, max_tries])
+		print("RLL> initial state: %s" % state.keys())
 		print("RLL> To do:", todo_list)
 
 	for tries in range(1, max_tries + 1):
 		if verbose >= 1:
 			var ordinals = {1: "st", 2: "nd", 3: "rd"}
 			if ordinals.get(tries):
-				print("RLL> {tries}{ordinals.get(tries)} call to find_plan:\n")
+				print("RLL> %s%s call to find_plan:" % [tries, ordinals.get(tries)])
 			else:
-				print("RLL> {tries}th call to find_plan:\n")
+				print("RLL> %s call to find_plan:" % [tries])
 		var plan = find_plan(state, todo_list)
 		if (plan is Array and not plan.size()) or (plan is bool and plan == false) or plan == null:
 			if verbose >= 1:

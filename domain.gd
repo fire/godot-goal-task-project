@@ -18,7 +18,7 @@ extends Resource
 
 const verbose : int = 1
 
-static func _m_verify_g(state, _method, state_var, arg, desired_val, _depth):
+func _m_verify_g(state, _method, state_var, arg, desired_val, depth):
 #	"""
 #	_m_verify_g is a method that GTPyhop uses to check whether a
 #	unigoal method has achieved the goal for which it was used.
@@ -48,18 +48,18 @@ static func _goals_not_achieved(state, multigoal):
 #	Then _goals_not_achieved(s, g) will return
 #		{'loc': {'c1': 'room3', 'c2': 'room4'}}
 #	"""
-	var unachieved = {}
-	for n in multigoal:
-		for arg in multigoal.get(n):
-			var val = multigoal.get(n).get(arg)
+	var unachieved : Dictionary = {}
+	for n in multigoal.state:
+		for arg in multigoal.state.get(n):
+			var val = multigoal.state.get(n).get(arg)
 			if val != state.get(n).get(arg):
 				# want arg_value_pairs.name[arg] = val
-				if not unachieved.get(n):
-					unachieved.update({n: {}})
-				unachieved.get(n).update({arg: val})
+				if not unachieved.has(n):
+					unachieved[n] = {}
+				unachieved.get(n)[arg] = val
 	return unachieved
 
-static func _m_verify_mg(state, method, multigoal, depth):
+func _m_verify_mg(state, method, multigoal, depth):
 #	"""
 #	_m_verify_g is a method that GTPyhop uses to check whether a multigoal
 #	method has achieved the multigoal for which it was used.
@@ -81,8 +81,8 @@ var _command_dict = {}
 # dictionary that maps each task name to a list of relevant methods
 # _verify_g and _verify_mg are described later in this file.
 var _task_method_dict = {
-	"_verify_g": [_m_verify_g],
-	"_verify_mg": [_m_verify_mg],
+	"_verify_g": [Callable(self, "_m_verify_g")],
+	"_verify_mg": [Callable(self, "_m_verify_mg")],
 }
 
 # dictionary that maps each unigoal name to a list of relevant methods

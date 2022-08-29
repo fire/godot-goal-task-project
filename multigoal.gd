@@ -57,6 +57,6 @@ func state_vars():
 	var properties : Array = get_property_list()
 	for v in properties:
 		for p in v.keys():
-			if v != get_name():
+			if p != get_name():
 				variable_list.push_back(v.get(p))
 	return variable_list

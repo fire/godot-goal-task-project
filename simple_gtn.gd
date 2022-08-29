@@ -48,58 +48,64 @@ var goal3 = Multigoal.new("goal3")
 # Helper functions:
 
 
-func taxi_rate(dist):
-	"In this domain, the taxi fares are quite low :-)"
-	return 1.5 + 0.5 * dist
+func taxi_rate(taxi_dist):
+#	"In this domain, the taxi fares are quite low :-)"
+	return 1.5 + 0.5 * taxi_dist
 
 
 func distance(x, y):
-	"""
-	If rigid.dist[(x,y)] = d, this function figures out that d is both
-	the distance from x to y and the distance from y to x.
-	"""
-	var result = dist.get([x, y]) > 0
+#	"""
+#	If rigid.dist[(x,y)] = d, this function figures out that d is both
+#	the distance from x to y and the distance from y to x.
+#	"""
+	var result = dist.get([x, y])
 	if result > 0:
 		return result
-	result = dist.get([y, x]) > 0
+	result = dist.get([y, x])
 	if result > 0:
 		return result
 	return 0 
 
 
 func is_a(variable, type):
-	"""
-	In most classical planners, one would declare data-types for the parameters
-	of each action, and the data-type checks would be done by the planner.
-	GTPyhop doesn't have a way to do that, so the 'is_a' function gives us a
-	way to do it in the preconditions of each action, command, and method.
-
-	'is_a' doesn't implement subtypes (e.g., if rigid.type[x] = y and
-	rigid.type[x] = z, it doesn't infer that rigid.type[x] = z. It wouldn't be
-	hard to implement this, but it isn't needed in the simple-travel domain.
-	"""
+#	"""
+#	In most classical planners, one would declare data-types for the parameters
+#	of each action, and the data-type checks would be done by the planner.
+#	GTPyhop doesn't have a way to do that, so the 'is_a' function gives us a
+#	way to do it in the preconditions of each action, command, and method.
+#
+#	'is_a' doesn't implement subtypes (e.g., if rigid.type[x] = y and
+#	rigid.type[x] = z, it doesn't infer that rigid.type[x] = z. It wouldn't be
+#	hard to implement this, but it isn't needed in the simple-travel domain.
+#	"""
 	return variable in types[type]
 
 
 ###############################################################################
 # Actions:
 
-
-func walk(state, p, x, y):
+func walk(state, args):
+	var p = args[0]  
+	var x = args[1]  
+	var y = args[2] 
 	if is_a(p, "person") and is_a(x, "location") and is_a(y, "location") and x != y:
 		if state.loc[p] == x:
 			state.loc[p] = y
 			return state
 
 
-func call_taxi(state, p, x):
+func call_taxi(state, args):
+	var p = args[0]  
+	var x = args[1] 
 	if is_a(p, "person") and is_a(x, "location"):
 		state.loc["taxi1"] = x
 		state.loc[p] = "taxi1"
 		return state
 
 
-func ride_taxi(state, p, y):
+func ride_taxi(state, args):
+	var p = args[0]  
+	var y = args[1] 
 	# if p is a person, p is in a taxi, and y is a location:
 	if is_a(p, "person") and is_a(state.loc[p], "taxi") and is_a(y, "location"):
 		var taxi = state.loc[p]
@@ -111,8 +117,8 @@ func ride_taxi(state, p, y):
 
 
 func pay_driver(state, args):
-	var p = args[0]
-	var y = args[1]
+	var p = args[0]  
+	var y = args[1] 
 	if is_a(p, "person"):
 		if state.cash[p] >= state.owe[p]:
 			state.cash[p] = state.cash[p] - state.owe[p]
@@ -141,16 +147,13 @@ func c_call_taxi(state, args):
 	var p = args[0] 
 	var x = args[1] 
 	if is_a(p, "person") and is_a(x, "location"):
-		var rand : RandomNumberGenerator = RandomNumberGenerator.new()
-		if rand.randfrange(2) > 0:
-			state.loc["taxi1"] = x
-			state.loc[p] = "taxi1"
-			print("Action> c_call_taxi succeeded.  This happens with Pr = 1/2.")
-			return state
-		else:
-			print("Action> c_call_taxi failed.  This happens with Pr = 1/2.")
-
-
+		var random_generator : RandomNumberGenerator = RandomNumberGenerator.new()
+		var taxi = "taxi%s" % [1 + random_generator.randfn(2)]
+		print("Action> the taxi is chosen randomly. This time it is %s." % [taxi])
+		state.loc[taxi] = x
+		state.loc[p] = taxi
+		return state
+		
 # c_ride_taxi, version used in simple_tasks1
 # this does the same thing as the action model
 func c_ride_taxi(state, args):
@@ -209,7 +212,7 @@ func _ready():
 	planner.current_domain = the_domain
 	goal1.state["loc"] = {"alice": "park"}
 	goal2.state["loc"] = {"bob": "park"}
-	goal3.state["loc"] = {"alice": "spark", "bob": "park"}
+	goal3.state["loc"] = {"alice": "park", "bob": "park"}
 	planner.declare_actions([
 			Callable(self, "walk"), 
 			Callable(self, "call_taxi"), 
@@ -227,8 +230,8 @@ func _ready():
 	# Running the examples
 
 	print("-----------------------------------------------------------------------")
-	print("Created the domain '{domain_name}'. To run the examples, type this:")
-	print("{domain_name}.main()")
+	print("Created the domain '%s'. To run the examples, type this:" % domain_name)
+	print("%s.main()" % domain_name)
 
 	planner.declare_unigoal_methods("loc", [Callable(self, "travel_by_foot"), Callable(self, "travel_by_taxi")])
 
@@ -359,7 +362,7 @@ Below, goal3 is the goal of having Alice and Bob at the park at the same time.
 
 #	goal3.display()
 	
-	print(goal3)
+	print(goal3.state)
 
 	print(
 		"""
@@ -383,7 +386,7 @@ method has achieved all of the values specified in the multigoal.
 #	)
 
 #	th.pause(do_pauses)
-	print("\nCall run_lazy_lookahead with verbose=1:\n")
+	print("Call run_lazy_lookahead with verbose=1:")
 
 	planner.verbose = 1
 	var new_state = planner.run_lazy_lookahead(state1, [["loc", "alice", "park"]])
@@ -391,7 +394,7 @@ method has achieved all of the values specified in the multigoal.
 
 #	th.pause(do_pauses)
 
-	print("\nAlice is now at the park, so the planner will return an empty plan:\n")
+	print("Alice is now at the park, so the planner will return an empty plan:")
 
 	planner.verbose = 1
 	plan = planner.find_plan(new_state, [["loc", "alice", "park"]])
