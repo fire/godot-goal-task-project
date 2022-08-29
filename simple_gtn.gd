@@ -384,7 +384,7 @@ method has achieved all of the values specified in the multigoal.
 #			("walk", "bob", "home_b", "park"),
 #		],
 #	)
-
+	print(plan)
 #	th.pause(do_pauses)
 	print("Call run_lazy_lookahead with verbose=1:")
 
