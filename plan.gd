@@ -413,7 +413,7 @@ func _refine_task_and_continue(state, task1, todo_list, plan, depth):
 			print("depth %s trying %s: " % [depth, method.get_method()])
 		var subtasks = typed_method.call(state, task1.slice(1))
 		# Can't just say "if subtasks:", because that's wrong if subtasks == []
-		if subtasks == false:
+		if subtasks is bool and subtasks == false:
 			if verbose >= 3:
 				print("not applicable")
 			continue
@@ -427,7 +427,7 @@ func _refine_task_and_continue(state, task1, todo_list, plan, depth):
 		var result = seek_plan(state, subtasks + todo_list, plan, depth + 1)
 		if result == null:
 			continue
-		if result == false:
+		if result is bool and result == false:
 			continue
 		return result
 	if verbose >= 3:

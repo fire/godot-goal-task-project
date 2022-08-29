@@ -21,6 +21,6 @@ _global_script_class_icons={
 [application]
 
 config/name="GT Godot Project"
-run/main_scene="res://simple_gtn.tscn"
+run/main_scene="res://simple_htn.tscn"
 config/features=PackedStringArray("4.0", "Vulkan Clustered")
 config/icon="res://icon.svg"
