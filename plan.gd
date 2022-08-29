@@ -25,7 +25,7 @@ const domain_const = preload("res://domain.gd")
 ################################################################################
 # How much information to print while the program is running
 
-var verbose = 1
+var verbose = 3
 #"""
 #verbose is a global value whose initial value is 1. Its value determines how
 #much debugging information GTPyhop will print:
@@ -138,7 +138,7 @@ func print_actions(domain=null):
 	if domain == null:
 		domain = current_domain
 	if domain._action_dict:
-		print("-- Actions:", ", ".join(domain._action_dict))
+		print("-- Actions:", ", ".join(domain._action_dict.keys()))
 	else:
 		print("-- There are no actions --")
 
@@ -232,7 +232,7 @@ func declare_actions(actions):
 		print("cannot declare actions until a domain has been created.")
 		return []
 	for action in actions:
-		current_domain._command_dict[action.get_method()] = action
+		current_domain._action_dict[action.get_method()] = action
 	return current_domain._action_dict
 
 
@@ -442,7 +442,7 @@ func _apply_action_and_continue(state, task1, todo_list, plan, depth):
 	if newstate:
 		if verbose >= 3:
 			print("applied")
-			newstate.display()
+			print(newstate)
 		return seek_plan(newstate, todo_list, plan + [task1], depth + 1)
 	if verbose >= 3:
 		print("not applicable")
@@ -450,7 +450,6 @@ func _apply_action_and_continue(state, task1, todo_list, plan, depth):
 
 
 func _refine_task_and_continue(state, task1, todo_list, plan, depth):
-	return false
 # TODO
 ##	"""
 ##	If task1 is in the task-method dictionary, then iterate through the list
@@ -462,25 +461,25 @@ func _refine_task_and_continue(state, task1, todo_list, plan, depth):
 ##	"""
 	var relevant = current_domain._task_method_dict[task1[0]]
 	if verbose >= 3:
-		print("depth {depth} task {task1} methods {[m.__name__ for m in relevant]}")
+		print("depth %s task %s methods {[m.__name__ for m in relevant]}" % [depth, task1])
 	for method in relevant:
 		var typed_method : Callable = method
 		if verbose >= 3:
-			print("depth {depth} trying {method.__name__}: ")
+			print("depth %s trying %s: " % [depth, method.get_method()])
 		var subtasks = typed_method.call(state, task1.slice(1))
 		# Can't just say "if subtasks:", because that's wrong if subtasks == []
-		if subtasks != false and subtasks != null:
+		if subtasks != null:
 			if verbose >= 3:
 				print("applicable")
-				print("depth {depth} subtasks: {subtasks}")
+				print("depth %s subtasks: %s" % [depth, subtasks])
 			var result = seek_plan(state, subtasks + todo_list, plan, depth + 1)
-			if result != false and result != null:
+			if result.size() and result != null:
 				return result
 		else:
 			if verbose >= 3:
 				print("not applicable")
 	if verbose >= 3:
-		print("depth {depth} could not accomplish task {task1}")
+		print("depth %s could not accomplish task %s" % [depth, task1])
 	return false
 
 func _refine_unigoal_and_continue(state, goal1, todo_list, plan, depth):
@@ -590,16 +589,16 @@ func find_plan(state, todo_list):
 #	 - 'state' is a state;
 #	 - 'todo_list' is a list of goals, tasks, and actions.
 #	"""
-#	if verbose >= 1:
-#		var todo_array : Array = []
-#		for x in todo_list:
-#			todo_array.push_back(x)
-#		var todo_string = "[" + ", ".join(todo_array) + "]"
-#		print("FP> find_plan, verbose={verbose}:")
-#		print("    state = %s\n    todo_list = %s" % [state, todo_string])
+	if verbose >= 1:
+		var todo_array : Array = []
+		for x in todo_list:
+			todo_array.push_back(x)
+		var todo_string = "[" + ", ".join(todo_array) + "]"
+		print("FP> find_plan, verbose=%s:" % verbose)
+		print("    state = %s\n    todo_list = %s" % [state, todo_string])
 	var result = seek_plan(state, todo_list, [], 0)
 	if verbose >= 1:
-		print("FP> result =", result, "\n")
+		print("FP> result = ", result, "\n")
 	return result
 
 
@@ -616,15 +615,13 @@ func seek_plan(state, todo_list, plan, depth):
 		for x in todo_list:
 			todo_array.push_back(_item_to_string(x))
 		var todo_string = "[" + ", ".join(todo_array) + "]"
-		print("depth {depth} todo_list " + todo_string)
-	if todo_list == []:
+		print("depth %s todo_list %s" % [depth, todo_string])
+	if todo_list.is_empty():
 		if verbose >= 3:
-			print("depth {depth} no more tasks or goals, return plan")
+			print("depth %s no more tasks or goals, return plan" % depth)
 		return plan
 	var item1 = todo_list[0]
-	if item1 is Callable:
-		return _refine_multigoal_and_continue(state, item1, todo_list.slice(1), plan, depth)
-	elif item1 is Array:
+	if item1 is Array:
 		if item1[0] in current_domain._action_dict:
 			return _apply_action_and_continue(state, item1, todo_list.slice(1), plan, depth)
 		elif item1[0] in current_domain._task_method_dict:
@@ -633,6 +630,8 @@ func seek_plan(state, todo_list, plan, depth):
 			return _refine_unigoal_and_continue(
 				state, item1, todo_list.slice(1), plan, depth
 			)
+	else:
+		return _refine_multigoal_and_continue(state, item1, todo_list.slice(1), plan, depth)
 	if item1 == null:
 		print("depth {depth}: {item1} isn't an action, task, unigoal, or multigoal\n")
 	return false
@@ -678,7 +677,7 @@ func run_lazy_lookahead(state, todo_list, max_tries=10):
 			else:
 				print("RLL> {tries}th call to find_plan:\n")
 		var plan = find_plan(state, todo_list)
-		if plan == false or plan == null:
+		if not plan.size() or plan == null:
 			if verbose >= 1:
 				print("run_lazy_lookahead: find_plan has failed")
 			return state

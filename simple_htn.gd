@@ -52,7 +52,13 @@ func distance(x, y):
 	If rigid.dist[(x,y)] = d, this function figures out that d is both
 	the distance from x to y and the distance from y to x.
 	"""
-	return dist.get([x, y]) or dist.get([y, x])
+	var result = dist.get([x, y])
+	if result > 0:
+		return result
+	result = dist.get([y, x])
+	if result > 0 :
+		return result
+	return 0
 
 
 func is_a(variable, type):
@@ -73,21 +79,28 @@ func is_a(variable, type):
 # Actions:
 
 
-func walk(state, p, x, y):
+func walk(state, args):
+	var p = args[0]  
+	var x = args[1]  
+	var y = args[2] 
 	if is_a(p, "person") and is_a(x, "location") and is_a(y, "location") and x != y:
 		if state.loc[p] == x:
 			state.loc[p] = y
 			return state
 
 
-func call_taxi(state, p, x):
+func call_taxi(state, args):
+	var p = args[0]  
+	var x = args[1] 
 	if is_a(p, "person") and is_a(x, "location"):
 		state.loc["taxi1"] = x
 		state.loc[p] = "taxi1"
 		return state
 
 
-func ride_taxi(state, p, y):
+func ride_taxi(state, args):
+	var p = args[0]  
+	var y = args[1] 
 	# if p is a person, p is in a taxi, and y is a location:
 	if is_a(p, "person") and is_a(state.loc[p], "taxi") and is_a(y, "location"):
 		var taxi = state.loc[p]
@@ -98,7 +111,9 @@ func ride_taxi(state, p, y):
 			return state
 
 
-func pay_driver(state, p, y):
+func pay_driver(state, args):
+	var p = args[0]  
+	var y = args[1] 
 	if is_a(p, "person"):
 		if state.cash[p] >= state.owe[p]:
 			state.cash[p] = state.cash[p] - state.owe[p]
@@ -112,7 +127,10 @@ func pay_driver(state, p, y):
 
 
 # this does the same thing as the action model
-func c_walk(state, p, x, y):
+func c_walk(state, args):
+	var p = args[0] 
+	var x = args[1] 
+	var y = args[2] 
 	if is_a(p, "person") and is_a(x, "location") and is_a(y, "location"):
 		if state.loc[p] == x:
 			state.loc[p] = y
@@ -121,7 +139,9 @@ func c_walk(state, p, x, y):
 
 # c_call_taxi, version used in simple_tasks1
 # this is like the action model except that the taxi doesn't always arrive
-func c_call_taxi(state, p, x):
+func c_call_taxi(state, args):
+	var p = args[0] 
+	var x = args[1] 
 	if is_a(p, "person") and is_a(x, "location"):
 		var rand : RandomNumberGenerator = RandomNumberGenerator.new()
 		if rand.randfrange(2) > 0:
@@ -135,7 +155,9 @@ func c_call_taxi(state, p, x):
 
 # c_ride_taxi, version used in simple_tasks1
 # this does the same thing as the action model
-func c_ride_taxi(state, p, y):
+func c_ride_taxi(state, args):
+	var p = args[0] 
+	var y = args[1] 
 	# if p is a person, p is in a taxi, and y is a location:
 	if is_a(p, "person") and is_a(state.loc[p], "taxi") and is_a(y, "location"):
 		var taxi = state.loc[p]
@@ -147,8 +169,8 @@ func c_ride_taxi(state, p, y):
 
 
 # this does the same thing as the action model
-func c_pay_driver(state, p, y):
-	return pay_driver(state, p, y)
+func c_pay_driver(state, args):
+	return pay_driver(state, args)
 
 
 
@@ -157,21 +179,27 @@ func c_pay_driver(state, p, y):
 # Methods:
 
 
-func do_nothing(state, p, y):
+func do_nothing(state, args):
+	var p = args[0] 
+	var y = args[1] 
 	if is_a(p, "person") and is_a(y, "location"):
 		var x = state.loc[p]
 		if x == y:
 			return []
 
 
-func travel_by_foot(state, p, y):
+func travel_by_foot(state, args):
+	var p = args[0] 
+	var y = args[1] 
 	if is_a(p, "person") and is_a(y, "location"):
 		var x = state.loc[p]
 		if x != y and distance(x, y) <= 2:
 			return [["walk", p, x, y]]
 
 
-func travel_by_taxi(state, p, y):
+func travel_by_taxi(state, args):
+	var p = args[0] 
+	var y = args[1] 
 	if is_a(p, "person") and is_a(y, "location"):
 		var x = state.loc[p]
 		if x != y and state.cash[p] >= taxi_rate(distance(x, y)):
@@ -185,7 +213,8 @@ func _ready():
 		Callable(self, "walk"), 
 		Callable(self, "call_taxi"), 
 		Callable(self, "ride_taxi"), 
-		Callable(self, "pay_driver")])
+		Callable(self, "pay_driver")
+		])
 	planner.declare_commands([
 			Callable(self, "c_walk"), 
 			Callable(self, "c_call_taxi"), 
@@ -202,8 +231,8 @@ func _ready():
 	# Running the examples
 
 	print("-----------------------------------------------------------------------")
-	print("Created the domain '{domain_name}'. To run the examples, type this:")
-	print("{domain_name}.main()")
+	print("Created the domain '%s'. To run the examples, type this:" % domain_name)
+	print("%s.main()" % domain_name)
 	#	"""
 	#	Run various examples.
 	#	main() will pause occasionally to let you examine the output.
@@ -234,23 +263,27 @@ We'll do it several times with different values for 'verbose'.
 	print("-- If verbose=0, the planner will return the solution but print nothing.")
 	planner.verbose = 0
 	var result = planner.find_plan(state1, [["travel", "alice", "park"]])
+	print(result)
 #	(result == expected)
 
 	print("-- If verbose=1, the planner will print the problem and solution,")
 	print("-- and then return the solution.\n")
 	planner.verbose = 1
 	result = planner.find_plan(state1, [["travel", "alice", "park"]])
+	print(result)
 #	(result == expected)
 
 	print("-- If verbose=2, the planner will print the problem, a note at each")
-	print("-- recursive call, and the solution. Then it will return the solution.\n")
+	print("-- recursive call, and the solution. Then it will return the solution.")
 	planner.verbose = 2
 	result = planner.find_plan(state1, [["travel", "alice", "park"]])
+	print(result)
 #	(result == expected)
 
-	print("-- If verbose=3, the planner will print even more information.\n")
+	print("-- If verbose=3, the planner will print even more information.")
 	planner.verbose = 3
 	result = planner.find_plan(state1, [["travel", "alice", "park"]])
+	print(result)
 #	(result == expected)
 
 	print(
@@ -285,7 +318,7 @@ it has tried too many times."""
 
 	print("")
 	print("If run_lazy_lookahead succeeded, then Alice is now at the park,")
-	print("so the planner will return an empty plan:\n")
+	print("so the planner will return an empty plan: ")
 
 	plan = planner.find_plan(new_state, [["travel", "alice", "park"]])
 	print(plan)
