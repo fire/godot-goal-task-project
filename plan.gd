@@ -463,7 +463,7 @@ func _refine_unigoal_and_continue(state, goal1, todo_list, plan, depth):
 		var method_typed : Callable = method
 		if verbose >= 3:
 			print("depth %s trying method %s: " % [depth, method.get_method()])
-		var subgoals = method_typed.call(state, arg, vals)
+		var subgoals = method_typed.call(state, arg, val)
 		if subgoals is bool and subgoals == false:
 			if verbose >= 3:
 				print("not applicable")
