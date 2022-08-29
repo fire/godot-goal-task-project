@@ -8,7 +8,6 @@ extends Node
 # Author: K. S. Ernest (iFire) Lee <ernest.lee@chibifire.com>, August 28, 2022
 
 const domain_const = preload("res://domain.gd")
-const blackboard_const = preload("res://blackboard.gd")
 
 #"""
 #GTPyhop is an automated planning system that can plan for both tasks and
@@ -105,11 +104,6 @@ class Multigoal:
 # Auxiliary functions for state and multigoal objects.
 
 
-func get_type(object):
-#	"""Return object's type name"""
-	return get_type(object).name
-
-
 var current_domain = null
 #"""
 #The Domain object that find_plan, run_lazy_lookahead, etc., will use.
@@ -154,7 +148,7 @@ func print_commands(domain=null):
 	if domain == null:
 		domain = current_domain
 	if domain._command_dict:
-		print("-- Commands:", ", ".join(domain._command_dict))
+		print("-- Commands:", ", ".join(domain._command_dict.keys()))
 	else:
 		print("-- There are no commands --")
 
@@ -168,7 +162,7 @@ func _print_task_methods(domain):
 		for task in domain._task_method_dict:
 			var string_array : Array = Array()
 			for f in domain._task_method_dict[task]:
-				string_array.append(f.name)
+				string_array.append(f.get_method())
 			print(
 				"{task:<19}"
 				+ ", ".join(string_array)
@@ -234,10 +228,11 @@ func declare_actions(actions):
 #	You can see the current domain's list of actions by executing
 #		current_domain.display()
 #	"""
-#	if current_domain == None:
-#		raise Exception(f"cannot declare actions until a domain has been created.")
+	if current_domain == null:
+		print("cannot declare actions until a domain has been created.")
+		return []
 	for action in actions:
-		current_domain._command_dict.insert({action.name: action})
+		current_domain._command_dict[action.get_method()] = action
 	return current_domain._action_dict
 
 
@@ -255,12 +250,13 @@ func declare_commands(commands):
 #		current_domain.display()
 #
 #	"""
-#	if current_domain == None:
-#		raise Exception(f"cannot declare commands until a domain has been created.")
+	if current_domain == null:
+		print("cannot declare commands until a domain has been created.")
+		return []
 	var command_array : PackedStringArray = PackedStringArray()
 	for cmd in commands:
-		command_array.push_back(cmd.name)
-		current_domain._command_dict.insert({cmd.name: cmd})
+		command_array.push_back(cmd.get_method())
+		current_domain._command_dict[cmd.get_method()] = cmd
 	return current_domain._command_dict
 
 
@@ -285,7 +281,7 @@ func declare_task_methods(task_name, methods):
 #	"""
 	if current_domain == null:
 		print("cannot declare methods until a domain has been created.")
-		get_tree().quit()
+		return []
 	if task_name in current_domain._task_method_dict:
 		var old_methods = current_domain._task_method_dict[task_name]
 		# even though current_domain._task_method_dict[task_name] is a list,
@@ -296,7 +292,7 @@ func declare_task_methods(task_name, methods):
 				method_arrays.push_back(m)
 		current_domain._task_method_dict[task_name].extend(method_arrays)
 	else:
-		current_domain._task_method_dict.update({task_name: methods})
+		current_domain._task_method_dict[task_name] = methods
 	return current_domain._task_method_dict
 
 
@@ -522,7 +518,7 @@ func _refine_unigoal_and_continue(state, goal1, todo_list, plan, depth):
 				print("depth {depth} subgoals: {subgoals}")
 			if verify_goals:
 				verification = [
-					["_verify_g", method.name, state_var_name, arg, val, depth]
+					["_verify_g", method.get_method(), state_var_name, arg, val, depth]
 				]
 			else:
 				verification = []
@@ -594,13 +590,13 @@ func find_plan(state, todo_list):
 #	 - 'state' is a state;
 #	 - 'todo_list' is a list of goals, tasks, and actions.
 #	"""
-	if verbose >= 1:
-		var todo_string_array : PackedStringArray = PackedStringArray()
-		for x in todo_list:
-			todo_string_array.push_back(x)
-		var todo_string = "[" + ", ".join(todo_string_array) + "]"
-		print("FP> find_plan, verbose={verbose}:")
-		print("    state = %s\n    todo_list = %s" % [state.get_name(), todo_string])
+#	if verbose >= 1:
+#		var todo_array : Array = []
+#		for x in todo_list:
+#			todo_array.push_back(x)
+#		var todo_string = "[" + ", ".join(todo_array) + "]"
+#		print("FP> find_plan, verbose={verbose}:")
+#		print("    state = %s\n    todo_list = %s" % [state, todo_string])
 	var result = seek_plan(state, todo_list, [], 0)
 	if verbose >= 1:
 		print("FP> result =", result, "\n")
@@ -626,10 +622,9 @@ func seek_plan(state, todo_list, plan, depth):
 			print("depth {depth} no more tasks or goals, return plan")
 		return plan
 	var item1 = todo_list[0]
-	var ttype = get_type(item1)
-	if ttype == ["Multigoal"]:
+	if item1 is Callable:
 		return _refine_multigoal_and_continue(state, item1, todo_list.slice(1), plan, depth)
-	elif ttype in ["list", "tuple"]:
+	elif item1 is Array:
 		if item1[0] in current_domain._action_dict:
 			return _apply_action_and_continue(state, item1, todo_list.slice(1), plan, depth)
 		elif item1[0] in current_domain._task_method_dict:
@@ -638,21 +633,13 @@ func seek_plan(state, todo_list, plan, depth):
 			return _refine_unigoal_and_continue(
 				state, item1, todo_list.slice(1), plan, depth
 			)
-	print("depth {depth}: {item1} isn't an action, task, unigoal, or multigoal\n")
-	get_tree().quit(1)
+	if item1 == null:
+		print("depth {depth}: {item1} isn't an action, task, unigoal, or multigoal\n")
 	return false
 
 
 func _item_to_string(item):
-#	"""Return a string representation of a task or goal."""
-	var ttype = get_type(item)
-	if ttype == "list":
-		var list_array : PackedStringArray = []
-		for x in item:
-			list_array.push_back(x)
-		return list_array
-	else:  # a multigoal
-		return item
+	return str(item)
 
 
 ################################################################################
@@ -694,7 +681,6 @@ func run_lazy_lookahead(state, todo_list, max_tries=10):
 		if plan == false or plan == null:
 			if verbose >= 1:
 				print("run_lazy_lookahead: find_plan has failed")
-				get_tree().quit(1)
 			return state
 		if plan == []:
 			if verbose >= 1:

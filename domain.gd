@@ -72,29 +72,29 @@ static func _m_verify_mg(state, method, multigoal, depth):
 		print("depth %s: method %s achieved %s" %[depth, method, multigoal])
 	return []
 	
+# dictionary that maps each action name to the corresponding function
+var _action_dict = {}
+
+# dictionary that maps each command name to the corresponding function
+var _command_dict = {}
+
+# dictionary that maps each task name to a list of relevant methods
+# _verify_g and _verify_mg are described later in this file.
+var _task_method_dict = {
+	"_verify_g": [_m_verify_g],
+	"_verify_mg": [_m_verify_mg],
+}
+
+# dictionary that maps each unigoal name to a list of relevant methods
+var _unigoal_method_dict = {}
+
+# list of all methods for multigoals
+var _multigoal_method_list = []
 func _init(domain_name):
 #		"""domain_name is the name to use for the domain."""
 
-	self.__name__ = domain_name
+	self.set_name(domain_name)
 
-	# dictionary that maps each action name to the corresponding function
-	self._action_dict = {}
-
-	# dictionary that maps each command name to the corresponding function
-	self._command_dict = {}
-
-	# dictionary that maps each task name to a list of relevant methods
-	# _verify_g and _verify_mg are described later in this file.
-	self._task_method_dict = {
-		"_verify_g": [_m_verify_g],
-		"_verify_mg": [_m_verify_mg],
-	}
-
-	# dictionary that maps each unigoal name to a list of relevant methods
-	self._unigoal_method_dict = {}
-
-	# list of all methods for multigoals
-	self._multigoal_method_list = []
 
 func get_string():
 	return "<Domain %s>" % get_name()
