@@ -8,9 +8,19 @@
 
 config_version=5
 
+_global_script_classes=[{
+"base": "Resource",
+"class": &"Multigoal",
+"language": &"GDScript",
+"path": "res://multigoal.gd"
+}]
+_global_script_class_icons={
+"Multigoal": ""
+}
+
 [application]
 
 config/name="GT Godot Project"
-run/main_scene="res://node.tscn"
+run/main_scene="res://simple_htn.tscn"
 config/features=PackedStringArray("4.0", "Vulkan Clustered")
 config/icon="res://icon.svg"
